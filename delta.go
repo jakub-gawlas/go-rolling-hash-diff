@@ -4,16 +4,19 @@ import (
 	"bytes"
 )
 
+// Delta is description of diff between original and updated data
 type Delta struct {
 	Operations []DeltaOperation
 }
 
+// Delta operation describes one peace of change needed to transform original data into updated data
 type DeltaOperation struct {
 	Type       OperationType
 	ChunkIndex int
 	Data       []byte
 }
 
+// OperationType can be deletion or addition
 type OperationType int
 
 const (
@@ -82,6 +85,7 @@ func (d *DeltaCalculator) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+// Returns calculated delta for written data, it's not safe to reuse DeltaCalculator after call this method
 func (d *DeltaCalculator) Delta() (Delta, error) {
 	if len(d.chunkData) > 0 {
 		d.calculateDeltaOperation(d.chunkData)

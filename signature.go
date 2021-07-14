@@ -4,6 +4,7 @@ import (
 	"errors"
 )
 
+// Signature is used to calculate delta for updated data
 type Signature struct {
 	ChunkSize    int
 	ChunksHashes [][]byte
@@ -66,6 +67,7 @@ func (s *SignatureCalculator) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+// Returns calculated signature for written data, it's not safe to reuse SignatureCalculator after call this method
 func (s *SignatureCalculator) Signature() (Signature, error) {
 	if s.currentChunkSize > 0 {
 		s.calculateChunkHash()
