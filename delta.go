@@ -27,7 +27,7 @@ type DeltaCalculator struct {
 
 	operations             []DeltaOperation
 	operationData          []byte
-	currentChunkSize       int
+	chunkData              []byte
 	lastMatchingChunkIndex int
 }
 
@@ -42,6 +42,7 @@ func newDeltaCalculator(originSignature Signature, hashCalc HashCalculator) Delt
 
 		operations:             make([]DeltaOperation, 0),
 		operationData:          make([]byte, 0),
+		chunkData:              make([]byte, 0),
 		lastMatchingChunkIndex: -1,
 	}
 }
@@ -55,7 +56,8 @@ func (d *DeltaCalculator) Write(data []byte) (int, error) {
 			return len(data), nil
 		}
 
-		maxChunkPartSize := d.origin.ChunkSize - d.currentChunkSize
+		currentChunkSize := len(d.chunkData)
+		maxChunkPartSize := d.origin.ChunkSize - currentChunkSize
 		toIndex := min(fromIndex+maxChunkPartSize, len(data))
 
 		chunkPart := data[fromIndex:toIndex]
@@ -64,10 +66,12 @@ func (d *DeltaCalculator) Write(data []byte) (int, error) {
 		}
 
 		chunkPartSize := toIndex - fromIndex
-		d.currentChunkSize += chunkPartSize
+		currentChunkSize += chunkPartSize
 
-		if d.currentChunkSize == d.origin.ChunkSize {
-			d.calculateDeltaOperation(chunkPart)
+		d.chunkData = append(d.chunkData, chunkPart...)
+		if currentChunkSize == d.origin.ChunkSize {
+			d.calculateDeltaOperation(d.chunkData)
+			d.chunkData = make([]byte, 0)
 		}
 
 		fromIndex += chunkPartSize
@@ -79,6 +83,10 @@ func (d *DeltaCalculator) Write(data []byte) (int, error) {
 }
 
 func (d *DeltaCalculator) Delta() (Delta, error) {
+	if len(d.chunkData) > 0 {
+		d.calculateDeltaOperation(d.chunkData)
+	}
+
 	for i := d.lastMatchingChunkIndex + 1; i < len(d.origin.ChunksHashes); i++ {
 		d.operations = append(d.operations, DeltaOperation{
 			Type:       OperationTypeDeletion,
@@ -100,12 +108,8 @@ func (d *DeltaCalculator) Delta() (Delta, error) {
 }
 
 func (d *DeltaCalculator) calculateDeltaOperation(chunkData []byte) {
-	defer func() {
-		d.hashCalculator.Reset()
-		d.currentChunkSize = 0
-	}()
-
 	hash := d.hashCalculator.Sum(nil)
+	d.hashCalculator.Reset()
 
 	matchingIndex := d.nextMatchingChunkIndex(hash)
 	// not found matching chunk

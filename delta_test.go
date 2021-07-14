@@ -14,7 +14,7 @@ func TestDeltaCalculator_Delta(t *testing.T) {
 		givenData   [][]byte
 		expected    Delta
 	}{
-		"no delta": {
+		"equal data": {
 			mock: func(m *deltaCalculatorMock) {
 				m.On("Write", []byte{1, 1}).Once()
 				m.On("Sum", nil).Return([]byte{1}).Once()
@@ -206,6 +206,166 @@ func TestDeltaCalculator_Delta(t *testing.T) {
 					{
 						Type:       OperationTypeDeletion,
 						ChunkIndex: 1,
+					},
+				},
+			},
+		},
+		"completely mismatched": {
+			mock: func(m *deltaCalculatorMock) {
+				m.On("Write", []byte{3, 3}).Once()
+				m.On("Sum", nil).Return([]byte{3}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{4, 4}).Once()
+				m.On("Sum", nil).Return([]byte{4}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{5}).Once()
+				m.On("Sum", nil).Return([]byte{5}).Once()
+				m.On("Reset").Once()
+			},
+			givenOrigin: Signature{
+				ChunkSize:    2,
+				ChunksHashes: [][]byte{{1}, {2}},
+			},
+			givenData: [][]byte{
+				{3, 3, 4, 4, 5},
+			},
+			expected: Delta{
+				Operations: []DeltaOperation{
+					{
+						Type:       OperationTypeDeletion,
+						ChunkIndex: 0,
+					},
+					{
+						Type:       OperationTypeDeletion,
+						ChunkIndex: 1,
+					},
+					{
+						Type:       OperationTypeAddition,
+						ChunkIndex: 0,
+						Data:       []byte{3, 3, 4, 4, 5},
+					},
+				},
+			},
+		},
+		"many writes, equal data": {
+			mock: func(m *deltaCalculatorMock) {
+				m.On("Write", []byte{1, 1}).Once()
+				m.On("Write", []byte{1}).Once()
+				m.On("Sum", nil).Return([]byte{1}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{2, 2}).Once()
+				m.On("Write", []byte{2}).Once()
+				m.On("Sum", nil).Return([]byte{2}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{3}).Once()
+				m.On("Write", []byte{3, 3}).Once()
+				m.On("Sum", nil).Return([]byte{3}).Once()
+				m.On("Reset").Once()
+			},
+			givenOrigin: Signature{
+				ChunkSize:    3,
+				ChunksHashes: [][]byte{{1}, {2}, {3}},
+			},
+			givenData: [][]byte{
+				{1, 1},
+				{1, 2, 2},
+				{2, 3},
+				{3, 3},
+			},
+			expected: Delta{
+				Operations: []DeltaOperation{},
+			},
+		},
+		"many writes, deletion, addition": {
+			mock: func(m *deltaCalculatorMock) {
+				m.On("Write", []byte{1, 1}).Once()
+				m.On("Sum", nil).Return([]byte{1}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{4, 4}).Once()
+				m.On("Sum", nil).Return([]byte{4}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{2}).Once()
+				m.On("Write", []byte{2}).Once()
+				m.On("Sum", nil).Return([]byte{2}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{5, 5}).Once()
+				m.On("Sum", nil).Return([]byte{5}).Once()
+				m.On("Reset").Once()
+			},
+			givenOrigin: Signature{
+				ChunkSize:    2,
+				ChunksHashes: [][]byte{{1}, {2}, {3}},
+			},
+			givenData: [][]byte{
+				{1, 1, 4, 4, 2},
+				{2, 5, 5},
+			},
+			expected: Delta{
+				Operations: []DeltaOperation{
+					{
+						Type:       OperationTypeAddition,
+						ChunkIndex: 1,
+						Data:       []byte{4, 4},
+					},
+					{
+						Type:       OperationTypeDeletion,
+						ChunkIndex: 2,
+					},
+					{
+						Type:       OperationTypeAddition,
+						ChunkIndex: 2,
+						Data:       []byte{5, 5},
+					},
+				},
+			},
+		},
+		"shifted original chunks": {
+			mock: func(m *deltaCalculatorMock) {
+				m.On("Write", []byte{10, 11}).Once()
+				m.On("Sum", nil).Return([]byte{10, 11}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{12, 13}).Once()
+				m.On("Sum", nil).Return([]byte{12, 13}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{14, 15}).Once()
+				m.On("Sum", nil).Return([]byte{14, 15}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{1, 1}).Once()
+				m.On("Sum", nil).Return([]byte{1}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{2, 2}).Once()
+				m.On("Sum", nil).Return([]byte{2}).Once()
+				m.On("Reset").Once()
+
+				m.On("Write", []byte{3, 3}).Once()
+				m.On("Sum", nil).Return([]byte{3}).Once()
+				m.On("Reset").Once()
+			},
+			givenOrigin: Signature{
+				ChunkSize:    2,
+				ChunksHashes: [][]byte{{1}, {2}, {3}},
+			},
+			givenData: [][]byte{
+				{10, 11, 12, 13, 14, 15},
+				{1, 1, 2, 2, 3, 3},
+			},
+			expected: Delta{
+				Operations: []DeltaOperation{
+					{
+						Type:       OperationTypeAddition,
+						ChunkIndex: 0,
+						Data:       []byte{10, 11, 12, 13, 14, 15},
 					},
 				},
 			},

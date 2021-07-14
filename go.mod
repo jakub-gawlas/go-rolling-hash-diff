@@ -1,4 +1,4 @@
-module rolling-hash-diff
+module github.com/jakub-gawlas/go-rolling-hash-diff
 
 go 1.15
 
