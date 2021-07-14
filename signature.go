@@ -8,7 +8,7 @@ type Signature struct {
 	ChunkSize    int
 	ChunksHashes [][]byte
 
-	//TODO: for back compatibility must be stored version of used algorithm
+	//TODO: for backward compatibility must be stored version of used algorithm
 }
 
 type SignatureCalculator struct {

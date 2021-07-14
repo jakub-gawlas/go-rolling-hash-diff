@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// calculate delta
-	data, err := ioutil.ReadFile("./testdata/data.txt")
+	data, err := ioutil.ReadFile("./testdata/updated.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
