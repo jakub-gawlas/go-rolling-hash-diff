@@ -326,7 +326,7 @@ func TestDeltaCalculator_Delta(t *testing.T) {
 				},
 			},
 		},
-		// TODO: current implementation detects only chunks shifted by multiply of chunk size
+		// TODO: current implementation detects only chunks shifted by multiply of chunk size, have to implement sliding window mechanism
 		"shifted original chunks": {
 			mock: func(m *deltaCalculatorMock) {
 				m.On("Write", []byte{10, 11}).Once()
